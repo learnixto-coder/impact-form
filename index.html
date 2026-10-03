@@ -114,12 +114,45 @@ textarea.grow{overflow:hidden;resize:none;min-height:1.6em}
 #program{font-weight:500}
 .toast{position:fixed;inset-inline:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));margin:0 auto;max-width:520px;background:var(--teal);color:#fff;border-radius:8px;padding:10px 14px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:20;text-align:center}
 .toast.err{background:#8c2119}
-@media (max-width:700px){.body{padding:8px 0 4px}}
+/* export menu */
+.exp{position:relative;display:inline-block}
+.exp .menu{position:absolute;inset-inline-start:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--rule);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.15);padding:4px;display:grid;min-width:170px;z-index:15}
+.exp .menu button{border:0;text-align:right;border-radius:6px;padding:8px 10px}
+.exp .menu button:hover{background:#eef4f6}
+/* وضع الطباعة/التصدير: عرض صفحة A4 أفقية ثابت (يُقاس عليه التصغير لصفحة واحدة) */
+.sheet.pm{width:1120px;max-width:none;margin:0 auto;box-shadow:none}
+.sheet.pm .polish,.sheet.pm .calbtn{display:none!important}
+.sheet.pm table{min-width:0}
+/* الأجهزة الصغيرة: كل صف بطاقة، والعنوان فوق القيمة */
+@media screen and (max-width:700px){
+  body{padding-inline:10px}
+  .body{padding:8px 0 4px}
+  .bar{flex-direction:column;align-items:stretch}
+  .bar .title{font-size:16px}
+  .bar .actions{justify-content:flex-start}
+  .sheet:not(.pm) .scroll{overflow:visible}
+  .sheet:not(.pm) table{min-width:0;font-size:14px}
+  .sheet:not(.pm) colgroup{display:none}
+  .sheet:not(.pm) table,.sheet:not(.pm) tbody,.sheet:not(.pm) tr,.sheet:not(.pm) td{display:block;width:100%!important}
+  .sheet:not(.pm) tr{border:1px solid var(--rule);border-radius:8px;overflow:hidden;margin-bottom:10px;background:rgba(255,255,255,.55)}
+  .sheet:not(.pm) tr:nth-child(even) td,.sheet:not(.pm) tr td{background:transparent;border:0}
+  .sheet:not(.pm) td{padding:8px 10px;border-bottom:1px solid rgba(91,155,213,.3)!important}
+  .sheet:not(.pm) td:last-child{border-bottom:0!important}
+  .sheet:not(.pm) td.lbl{background:var(--band)!important;font-weight:500;text-align:right!important;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .sheet:not(.pm) .polish{margin:0 auto 0 0}
+  .opts{gap:8px 14px}
+  label.opt{white-space:normal;padding:4px 2px}
+  .bub{width:20px;height:20px}
+  .pct{justify-content:flex-start}
+  .day{grid-template-columns:4.5em 1fr}
+  .day .gd{grid-column:2}
+}
 @media print{
   @page{size:A4 landscape;margin:0}
-  body{padding:0;background:var(--ground)}
-  .bar,.note,.fill,.calbtn,.modal,.polish,.toast{display:none!important}
-  .sheet{box-shadow:none;max-width:none}
+  html,body{padding:0;margin:0;background:var(--ground)}
+  .bar,.note,.fill,.calbtn,.modal,.polish,.toast,.exp{display:none!important}
+  .sheet{box-shadow:none;max-width:none;break-inside:avoid;page-break-inside:avoid}
+  .scroll{overflow:visible}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   input.f,input.other,input.n{border-bottom-color:transparent!important}
   textarea.f{resize:none}
@@ -131,7 +164,12 @@ textarea.grow{overflow:hidden;resize:none;min-height:1.6em}
   <div class="title">قياس الأثر والتقويم الذاتي</div>
   <div class="actions">
     <span class="status" id="status">يُحفظ ما تكتبينه تلقائيًا على هذا الجهاز</span>
-    <button class="primary" id="printBtn" type="button">طباعة / حفظ PDF</button>
+    <button class="primary" id="printBtn" type="button">طباعة (صفحة واحدة)</button>
+    <span class="exp"><button class="primary" id="expBtn" type="button" aria-haspopup="true" aria-expanded="false">تصدير ▾</button>
+      <span class="menu" id="expMenu" hidden>
+        <button type="button" data-exp="pdf">ملف PDF (صفحة واحدة)</button>
+        <button type="button" data-exp="word">ملف Word</button>
+      </span></span>
     <button class="danger" id="clearBtn" type="button">مسح النموذج</button>
   </div>
 </div>
@@ -649,8 +687,78 @@ textarea.grow{overflow:hidden;resize:none;min-height:1.6em}
   $('stopBtn').addEventListener('click',function(){if(ctl)ctl.abort();});
   $('undoBtn').addEventListener('click',function(){if(!snap)return;frm.reset();apply(snap);chip();renderG();growAll();save();$('undoBtn').hidden=true;say('أُعيد النموذج كما كان قبل التعبئة.');});
 
-  var pb=document.getElementById('printBtn'),framed=false;try{framed=window.self!==window.top}catch(e){framed=true}
-  if(framed){pb.hidden=true;}else pb.addEventListener('click',function(){window.print();});
+  // ---------- صفحة واحدة: عرض A4 أفقي ثابت ثم تصغير يناسب ارتفاع الصفحة ----------
+  var sheet=document.querySelector('.sheet'),PAGE_W=1120,PAGE_H=790;
+  function enterPM(){sheet.classList.add('pm');sheet.style.zoom='';growAll();
+    var h=sheet.scrollHeight,z=Math.min(1,PAGE_H/h);sheet.style.zoom=z<1?String(z):'';return z;}
+  function exitPM(){sheet.classList.remove('pm');sheet.style.zoom='';growAll();}
+  window.addEventListener('beforeprint',enterPM);
+  window.addEventListener('afterprint',exitPM);
+  var pb=document.getElementById('printBtn');
+  pb.addEventListener('click',function(){enterPM();setTimeout(function(){window.print();},50);});
+
+  // ---------- التصدير ----------
+  var expBtn=$('expBtn'),expMenu=$('expMenu');
+  expBtn.addEventListener('click',function(e){e.stopPropagation();expMenu.hidden=!expMenu.hidden;expBtn.setAttribute('aria-expanded',String(!expMenu.hidden));});
+  document.addEventListener('click',function(){expMenu.hidden=true;expBtn.setAttribute('aria-expanded','false');});
+  function fileBase(){var p=$('program').value.trim().replace(/[\\\/:*?"<>|]+/g,'-').slice(0,60);return 'قياس الأثر'+(p?' - '+p:'');}
+  function saveBlob(blob,name){
+    var url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+    // إن منع المتصفح التنزيل داخل إطار: رابط لفتح الملف
+    var el=$('toast');el.className='toast';el.hidden=false;el.innerHTML='جُهّز الملف «'+name+'». إن لم يبدأ التنزيل <a href="'+url+'" target="_blank" rel="noopener" style="color:#fff;text-decoration:underline">اضغطي هنا لفتحه</a>.';
+    clearTimeout(toastT);toastT=setTimeout(function(){el.hidden=true;},12000);
+  }
+  function loadScript(src){return new Promise(function(ok,no){var s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=function(){no(new Error('تعذر تحميل '+src));};document.head.appendChild(s);});}
+  var libs=null;
+  function pdfLibs(){return libs||(libs=Promise.all([
+    window.html2canvas?0:loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
+    window.jspdf?0:loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')]).catch(function(e){libs=null;throw e;}));}
+  // نسخة ثابتة من النموذج (الحقول ← نص، الخيارات ← ☑/☐) للتصدير
+  function staticClone(){
+    var c=sheet.cloneNode(true);c.classList.add('pm');c.style.zoom='';
+    c.querySelectorAll('.polish,.calbtn,.chip').forEach(function(b){b.remove();});
+    var src=sheet.querySelectorAll('input,textarea'),dst=c.querySelectorAll('input,textarea');
+    dst.forEach(function(el,i){var o=src[i],sp=document.createElement('span');
+      if(o.type==='radio'||o.type==='checkbox'){var lab=el.closest('label.opt');if(lab){var t=lab.querySelector('.t');lab.outerHTML='<span class="opt">'+(o.checked?'☑ ':'☐ ')+(t?t.textContent:'')+'</span>';}return;}
+      // سطر جديد ← <br> (Word لا يلتزم pre-wrap)
+      o.value.split('\n').forEach(function(line,k){if(k)sp.appendChild(document.createElement('br'));sp.appendChild(document.createTextNode(line));});
+      if(el.classList.contains('n')&&!o.value)sp.textContent='   ';el.replaceWith(sp);});
+    return c;
+  }
+  // html2canvas لا يلفّ أسطر textarea: تُستبدل مؤقتًا بنص ثابت ثم تُعاد
+  var swapped=[];
+  function swapTextareas(){sheet.querySelectorAll('textarea').forEach(function(t){var d=document.createElement('div');
+    d.className=t.className;d.textContent=t.value;d.style.cssText='white-space:pre-wrap;word-break:break-word;height:auto;min-height:1.5em;font-weight:'+getComputedStyle(t).fontWeight;
+    t.parentNode.insertBefore(d,t);t.style.display='none';swapped.push([t,d]);});}
+  function restoreTextareas(){swapped.forEach(function(p){p[1].remove();p[0].style.display='';});swapped=[];}
+  function exportPDF(){
+    toast('جارٍ تجهيز ملف PDF…');
+    pdfLibs().then(function(){
+      enterPM();sheet.style.zoom='';swapTextareas();   // يُرسم بالحجم الكامل ثم يُصغّر داخل الصفحة
+      return window.html2canvas(sheet,{scale:2,backgroundColor:'#E2E3DD',useCORS:true,windowWidth:PAGE_W+40,
+        ignoreElements:function(el){return el.classList&&(el.classList.contains('polish')||el.classList.contains('calbtn'));}});
+    }).then(function(cv){
+      restoreTextareas();exitPM();
+      var J=window.jspdf.jsPDF,doc=new J({orientation:'landscape',unit:'mm',format:'a4'});
+      var pw=297,ph=210,r=Math.min(pw/cv.width,ph/cv.height),w=cv.width*r,h=cv.height*r;
+      doc.setFillColor(226,227,221);doc.rect(0,0,pw,ph,'F');
+      doc.addImage(cv.toDataURL('image/jpeg',0.92),'JPEG',(pw-w)/2,(ph-h)/2,w,h);
+      saveBlob(doc.output('blob'),fileBase()+'.pdf');
+    }).catch(function(e){restoreTextareas();exitPM();toast('تعذّر تصدير PDF: '+(e&&e.message||e)+' — استخدمي «طباعة» ثم «حفظ بتنسيق PDF».',true);});
+  }
+  function exportWord(){
+    var c=staticClone();c.querySelectorAll('img.art').forEach(function(im){im.remove();});
+    var css='@page WordSection1{size:841.9pt 595.3pt;mso-page-orientation:landscape;margin:28pt 28pt 28pt 28pt}div.WordSection1{page:WordSection1}'+
+      'body{font-family:"Tajawal","Segoe UI",Tahoma,Arial,sans-serif;direction:rtl}table{border-collapse:collapse;width:100%;direction:rtl}'+
+      'td{border:1px solid #5B9BD5;padding:4pt 6pt;vertical-align:middle;text-align:right;font-size:11pt}tr:nth-child(even) td{background:#C7D5DC}'+
+      'td.lbl{font-weight:bold}.opt{margin-left:12pt;white-space:nowrap}h1{color:#08404C;font-size:16pt;text-align:center;margin:0 0 8pt}';
+    var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">'+
+      '<head><meta charset="utf-8"><title>'+fileBase()+'</title><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->'+
+      '<style>'+css+'</style></head><body dir="rtl"><div class="WordSection1"><h1>قياس الأثر والتقويم الذاتي</h1>'+c.querySelector('table').outerHTML+'</div></body></html>';
+    saveBlob(new Blob(['﻿'+html],{type:'application/msword'}),fileBase()+'.doc');
+  }
+  expMenu.addEventListener('click',function(e){var b=e.target.closest('[data-exp]');if(!b)return;expMenu.hidden=true;
+    if(b.dataset.exp==='pdf')exportPDF();else exportWord();});
 
   var cb=document.getElementById('clearBtn'),armed=false,ct;
   cb.addEventListener('click',function(){
