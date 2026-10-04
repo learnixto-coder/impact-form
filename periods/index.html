@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="تقارير النشاط">
 <meta name="theme-color" content="#08404C">
-<title>تقارير النشاط الطلابي</title>
+<title>بطاقة تنفيذ الفترات اللاصفية</title>
 <style>
   /* غلاف بملء الشاشة لتطبيق Apps Script: يُخفي شريط تحذير Google الذي يظهر عند الفتح المباشر */
   html, body { margin: 0; height: 100%; background: #f4f6f7; }
@@ -17,10 +17,11 @@
 </style>
 </head>
 <body>
-<div class="loading" id="loading">جارٍ فتح تقارير النشاط الطلابي…</div>
+<div class="loading" id="loading">جارٍ فتح بطاقة تنفيذ الفترات اللاصفية…</div>
 <iframe id="app" title="تقارير النشاط الطلابي"
   src="https://script.google.com/macros/s/AKfycbw12FsdQ9zDxbBztTNd0RKFKMzL9p225JQZO4RB29_zEQihpREevPGHZt05JgDEN1K7/exec"
   allow="clipboard-write; fullscreen"></iframe>
+<script>window.PAGE_QUERY = '?page=periods';</script>
 <script>
   // تمرير خيارات الرابط إلى النظام (مثل ?page=periods لبطاقة الفترات اللاصفية)
   (function () { var f = document.getElementById('app'), q = window.PAGE_QUERY || location.search; if (q) f.src = f.src.split('?')[0] + q; })();
@@ -28,7 +29,7 @@
   // إن لم يُفتح خلال 20 ثانية: رابط مباشر بديل
   setTimeout(function () {
     var l = document.getElementById('loading');
-    if (!l.hidden) l.innerHTML = 'تأخر الفتح. <a href="https://script.google.com/macros/s/AKfycbw12FsdQ9zDxbBztTNd0RKFKMzL9p225JQZO4RB29_zEQihpREevPGHZt05JgDEN1K7/exec">افتحي الرابط المباشر</a>';
+    if (!l.hidden) l.innerHTML = 'تأخر الفتح. <a href="https://script.google.com/macros/s/AKfycbw12FsdQ9zDxbBztTNd0RKFKMzL9p225JQZO4RB29_zEQihpREevPGHZt05JgDEN1K7/exec?page=periods">افتحي الرابط المباشر</a>';
   }, 20000);
 </script>
 </body>
