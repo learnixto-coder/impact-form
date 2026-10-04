@@ -702,7 +702,22 @@ textarea.grow{overflow:hidden;resize:none;min-height:1.6em}
   expBtn.addEventListener('click',function(e){e.stopPropagation();expMenu.hidden=!expMenu.hidden;expBtn.setAttribute('aria-expanded',String(!expMenu.hidden));});
   document.addEventListener('click',function(){expMenu.hidden=true;expBtn.setAttribute('aria-expanded','false');});
   function fileBase(){var p=$('program').value.trim().replace(/[\\\/:*?"<>|]+/g,'-').slice(0,60);return 'قياس الأثر'+(p?' - '+p:'');}
+  // عند فتح النموذج من صفحة التقارير (رمز جلسة): يُحفظ الملف المصدَّر في مجلد المعلمة وفي الأرشيف
+  function uploadToDrive(blob,name){
+    if(!window.IMPACT_TOKEN||!(window.google&&google.script&&google.script.run))return false;
+    var r=new FileReader();
+    r.onload=function(){var b64=String(r.result).split(',')[1];toast('جارٍ حفظ «'+name+'» في مجلدك…');
+      google.script.run.withSuccessHandler(function(res){
+        if(!res||!res.ok){toast('تعذّر الحفظ في المجلد: '+(res&&res.error||'خطأ غير معروف'),true);return;}
+        var el=$('toast');el.className='toast';el.hidden=false;
+        el.innerHTML='✓ حُفظ «'+res.data.name+'» في مجلدك. <a href="'+res.data.folderUrl+'" target="_blank" rel="noopener" style="color:#fff;text-decoration:underline">فتح المجلد</a>';
+        clearTimeout(toastT);toastT=setTimeout(function(){el.hidden=true;},12000);
+      }).withFailureHandler(function(e){toast('تعذّر الحفظ في المجلد: '+(e&&e.message||e),true);})
+        .apiSaveImpact(window.IMPACT_TOKEN,name,blob.type,b64,$('program').value.trim());};
+    r.readAsDataURL(blob);return true;
+  }
   function saveBlob(blob,name){
+    if(uploadToDrive(blob,name))return;   // داخل النظام: الحفظ في المجلد بدل التنزيل
     var url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
     // إن منع المتصفح التنزيل داخل إطار: رابط لفتح الملف
     var el=$('toast');el.className='toast';el.hidden=false;el.innerHTML='جُهّز الملف «'+name+'». إن لم يبدأ التنزيل <a href="'+url+'" target="_blank" rel="noopener" style="color:#fff;text-decoration:underline">اضغطي هنا لفتحه</a>.';
